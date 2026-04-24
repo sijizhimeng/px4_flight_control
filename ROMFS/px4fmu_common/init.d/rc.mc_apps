@@ -52,7 +52,8 @@ fi
 # Start Multicopter Rate Controller.
 #
 mc_rate_control start
-
+#mc_pos_helper start
+#work_item_example start
 #
 # Start Multicopter Attitude Controller.
 #
@@ -64,6 +65,9 @@ mc_att_control start
 mc_hover_thrust_estimator start
 flight_mode_manager start
 mc_pos_control start
+usr_pos_control start
+usr_att_control start
+# work_item_example start
 
 #
 # Start Multicopter Land Detector.

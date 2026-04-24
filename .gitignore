@@ -4,6 +4,7 @@
 *.pyc
 *~
 .*.swp
+.catkin_tools/
 .context
 .cproject
 .DS_Store

@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2021 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,15 +28,13 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-#
+#${MAX_CUSTOM_OPT_LEVEL}
 ############################################################################
 
 px4_add_module(
 	MODULE examples__work_item
 	MAIN work_item_example
-	COMPILE_FLAGS
-		#-DDEBUG_BUILD   # uncomment for PX4_DEBUG output
-		#-O0             # uncomment when debugging
+        COMPILE_FLAGS
 	SRCS
 		WorkItemExample.cpp
 		WorkItemExample.hpp

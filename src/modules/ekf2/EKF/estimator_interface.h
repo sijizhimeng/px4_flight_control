@@ -185,7 +185,7 @@ public:
 	const matrix::Quatf &getQuaternion() const { return _output_new.quat_nominal; }
 
 	// get the velocity of the body frame origin in local NED earth frame
-	Vector3f getVelocity() const { return _output_new.vel - _vel_imu_rel_body_ned; }
+    Vector3f getVelocity() const { return _output_new.vel - _vel_imu_rel_body_ned; }
 
 	// get the velocity derivative in earth frame
 	const Vector3f &getVelocityDerivative() const { return _vel_deriv; }

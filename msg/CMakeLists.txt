@@ -103,12 +103,17 @@ set(msg_files
 	mission_result.msg
 	mount_orientation.msg
 	multirotor_motor_limits.msg
+        mavros_gs.msg
 	navigator_mission_item.msg
 	obstacle_distance.msg
 	offboard_control_mode.msg
 	onboard_computer_status.msg
 	optical_flow.msg
 	orbit_status.msg
+        orb_testx.msg
+        pos_helper.msg
+	att_helper.msg
+        iusl_para.msg
 	parameter_update.msg
 	ping.msg
 	position_controller_landing_status.msg

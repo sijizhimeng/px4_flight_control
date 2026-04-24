@@ -53,7 +53,7 @@ px4_add_board(
 		tone_alarm
 		uavcan
 	MODULES
-		airspeed_selector
+                #airspeed_selector
 		attitude_estimator_q
 		battery_status
 		camera_feedback
@@ -63,8 +63,8 @@ px4_add_board(
 		esc_battery
 		events
 		flight_mode_manager
-		fw_att_control
-		fw_pos_control_l1
+                #fw_att_control
+                #fw_pos_control_l1
 		gyro_calibration
 		gyro_fft
 		land_detector
@@ -75,19 +75,22 @@ px4_add_board(
 		mavlink
 		mc_att_control
 		mc_hover_thrust_estimator
-		mc_pos_control
+                mc_pos_control
 		mc_rate_control
+                #controller defined by user
+                usr_pos_control
+                usr_att_control
 		#micrortps_bridge
 		navigator
 		rc_update
-		rover_pos_control
+                #rover_pos_control
 		sensors
 		sih
 		temperature_compensation
-		uuv_att_control
-		uuv_pos_control
-		vmount
-		vtol_att_control
+                #uuv_att_control
+                #uuv_pos_control
+                #vmount
+                #vtol_att_control
 	SYSTEMCMDS
 		bl_update
 		dmesg
@@ -119,7 +122,7 @@ px4_add_board(
 		ver
 		work_queue
 	EXAMPLES
-		fake_gps
+                #fake_gps
 		#fake_imu
 		#fake_magnetometer
 		#fixedwing_control # Tutorial code from https://px4.io/dev/example_fixedwing_control
@@ -130,5 +133,5 @@ px4_add_board(
 		#px4_simple_app # Tutorial code from http://dev.px4.io/en/apps/hello_sky.html
 		#rover_steering_control # Rover example app
 		#uuv_example_app
-		#work_item
+                #work_item
 	)

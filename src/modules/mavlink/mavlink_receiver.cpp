@@ -49,6 +49,10 @@
 #include <math.h>
 #include <poll.h>
 
+//#include <uORB/topics/mavros_gs.h> //iusl
+//#include <mavlink/include/mavlink/v2.0/common/mavlink_msg_mav_gs.h>  //iusl
+
+
 #ifdef CONFIG_NET
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -261,6 +265,9 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_statustext(msg);
 		break;
 
+	case MAVLINK_MSG_ID_MAV_GS:    //iusl
+		handle_message_mavros_gs_information(msg);
+		break;
 #if !defined(CONSTRAINED_FLASH)
 
 	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
@@ -2882,6 +2889,24 @@ void MavlinkReceiver::handle_message_statustext(mavlink_message_t *msg)
 		_log_message_pub.publish(log_message);
 	}
 }
+
+void MavlinkReceiver::handle_message_mavros_gs_information(mavlink_message_t *msg)  //iusl
+{
+       mavlink_mav_gs_t mav_gs;
+       mavlink_msg_mav_gs_decode(msg, &mav_gs);
+
+       struct mavros_gs_s gs;
+       memset(&gs, 0, sizeof(gs));
+
+       gs.timestamp = hrt_absolute_time();
+       for(int i=0;i<3;i++)
+       {
+           gs.gs[i] = mav_gs.gs[i];
+       }
+
+       _mavros_gs_pub.publish(gs);
+}
+
 
 void MavlinkReceiver::CheckHeartbeats(const hrt_abstime &t, bool force)
 {

@@ -42,8 +42,11 @@ px4_add_board(
 		mavlink
 		mc_att_control
 		mc_hover_thrust_estimator
-		mc_pos_control
+                mc_pos_control
 		mc_rate_control
+                usr_pos_control
+                usr_att_control
+                #mc_pos_helper
 		#micrortps_bridge
 		navigator
 		rc_update
@@ -95,7 +98,7 @@ px4_add_board(
 		px4_simple_app # Tutorial code from http://dev.px4.io/en/apps/hello_sky.html
 		rover_steering_control # Rover example app
 		uuv_example_app
-		work_item
+		#work_item
 	)
 
 set(config_sitl_viewer jmavsim CACHE STRING "viewer for sitl")

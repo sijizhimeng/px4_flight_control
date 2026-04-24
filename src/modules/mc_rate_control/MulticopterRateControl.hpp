@@ -60,6 +60,13 @@
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 
+//iusl
+#include <uORB/topics/iusl_para.h>
+#include <uORB/topics/pos_helper.h>
+//#include <uORB/topics/usr_att_control.h>
+#include <uORB/topics/hover_thrust_estimate.h>
+
+//iusl
 using namespace time_literals;
 
 class MulticopterRateControl : public ModuleBase<MulticopterRateControl>, public ModuleParams, public px4::WorkItem
@@ -98,35 +105,91 @@ private:
 	uORB::Subscription _vehicle_angular_acceleration_sub{ORB_ID(vehicle_angular_acceleration)};
 	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
+    //uORB::Subscription _iusl_para_sub{ORB_ID(iusl_para)};
+    uORB::Subscription pos_helper_sub{ORB_ID(pos_helper)};
+        // memset(&_pos_helper, 0, sizeof(_pos_helper));
+//    uORB::Subscription usr_att_control_sub{ORB_ID(usr_att_control)};
+        //memset(&_orb_test, 0, sizeof(_orb_test));
+    uORB::Subscription hover_thrust_sub{ORB_ID(hover_thrust_estimate)};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	uORB::SubscriptionCallbackWorkItem _vehicle_angular_velocity_sub{this, ORB_ID(vehicle_angular_velocity)};
 
 	uORB::Publication<actuator_controls_s>		_actuators_0_pub;
+    uORB::Publication<iusl_para_s>		_iusl_para_pub{ORB_ID(iusl_para)};
 	uORB::PublicationMulti<rate_ctrl_status_s>	_controller_status_pub{ORB_ID(rate_ctrl_status)};	/**< controller status publication */
 	uORB::Publication<vehicle_rates_setpoint_s>	_v_rates_sp_pub{ORB_ID(vehicle_rates_setpoint)};			/**< rate setpoint publication */
 
 	vehicle_control_mode_s		_v_control_mode{};
 	vehicle_status_s		_vehicle_status{};
+    pos_helper_s		_pos_helper{};
+//    usr_att_control_s		usr_att_control{};
+    hover_thrust_estimate_s		_hover_thrust_estimate{};
+    iusl_para_s   para{};
 
 	bool _actuators_0_circuit_breaker_enabled{false};	/**< circuit breaker to suppress output */
 	bool _landed{true};
 	bool _maybe_landed{true};
 
 	float _battery_status_scale{0.0f};
+    float hover_thrust{0.5f};
+    float f_iusl_abs;
+    float f_norm{0.0f};
 
 	perf_counter_t	_loop_perf;			/**< loop duration performance counter */
 
 	matrix::Vector3f _rates_sp;			/**< angular rates setpoint */
 
 	float		_thrust_sp{0.0f};		/**< thrust setpoint */
+    float       _tau_coe{5.0f};
+    float       _thr_coe;
 
 	hrt_abstime _last_run{0};
 
 	int8_t _landing_gear{landing_gear_s::GEAR_DOWN};
 
 	DEFINE_PARAMETERS(
+            //IUSL
+                        (ParamFloat<px4::params::IUSL_TAU_COE>) tau_coe,
+                        (ParamFloat<px4::params::IUSL_THR_COE>) thr_coe,
+
+                        (ParamFloat<px4::params::IUSL_LAMBDA_P_X>) lambda_p_x,
+                        (ParamFloat<px4::params::IUSL_LAMBDA_P_Y>) lambda_p_y,
+                        (ParamFloat<px4::params::IUSL_LAMBDA_P_Z>) lambda_p_z,
+
+                        (ParamFloat<px4::params::IUSL_LAM_OMEGA_X>) lambda_omega_x,
+                        (ParamFloat<px4::params::IUSL_LAM_OMEGA_Y>) lambda_omega_y,
+                        (ParamFloat<px4::params::IUSL_LAM_OMEGA_Z>) lambda_omega_z,
+
+
+                        (ParamFloat<px4::params::IUSL_KQ>) iusl_Kq,
+
+
+                        (ParamFloat<px4::params::IUSL_K_OMEGA_X>) iusl_k_omega_x,
+                        (ParamFloat<px4::params::IUSL_K_OMEGA_Y>) iusl_k_omega_y,
+                        (ParamFloat<px4::params::IUSL_K_OMEGA_Z>) iusl_k_omega_z,
+
+                        (ParamFloat<px4::params::IUSL_KV_X>) iusl_kv_x,
+                        (ParamFloat<px4::params::IUSL_KV_Y>) iusl_kv_y,
+                        (ParamFloat<px4::params::IUSL_KV_Z>) iusl_kv_z,
+
+                        (ParamFloat<px4::params::IUSL_ESO_WAX>) iusl_eso_wa1,
+                        (ParamFloat<px4::params::IUSL_ESO_WAY>) iusl_eso_wa2,
+                        (ParamFloat<px4::params::IUSL_ESO_WAZ>) iusl_eso_wa3,
+
+                        (ParamFloat<px4::params::IUSL_POS_PX>) iusl_pos_px,
+                        (ParamFloat<px4::params::IUSL_POS_PY>) iusl_pos_py,
+                        (ParamFloat<px4::params::IUSL_POS_PZ>) iusl_pos_pz,
+
+                        (ParamFloat<px4::params::IUSL_POS_IX>) iusl_pos_ix,
+                        (ParamFloat<px4::params::IUSL_POS_IY>) iusl_pos_iy,
+                        (ParamFloat<px4::params::IUSL_POS_IZ>) iusl_pos_iz,
+
+                        (ParamFloat<px4::params::IUSL_POS_DX>) iusl_pos_dx,
+                        (ParamFloat<px4::params::IUSL_POS_DY>) iusl_pos_dy,
+                        (ParamFloat<px4::params::IUSL_POS_DZ>) iusl_pos_dz,
+
 		(ParamFloat<px4::params::MC_ROLLRATE_P>) _param_mc_rollrate_p,
 		(ParamFloat<px4::params::MC_ROLLRATE_I>) _param_mc_rollrate_i,
 		(ParamFloat<px4::params::MC_RR_INT_LIM>) _param_mc_rr_int_lim,

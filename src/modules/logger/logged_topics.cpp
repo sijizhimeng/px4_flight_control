@@ -116,6 +116,10 @@ void LoggedTopics::add_default_topics()
 	add_topic("vehicle_status_flags");
 	add_topic("vtol_vehicle_status", 200);
 	add_topic("wind", 1000);
+	add_topic("orb_testx",50);
+	add_topic("pos_helper",50);
+	add_topic("att_helper",50);
+	add_topic("mavros_gs",50);
 
 	// Control allocation topics
 	add_topic("vehicle_actuator_setpoint", 20);

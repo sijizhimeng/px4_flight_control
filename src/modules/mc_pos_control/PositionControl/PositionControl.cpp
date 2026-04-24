@@ -127,7 +127,7 @@ void PositionControl::_velocityControl(const float dt)
 	Vector3f acc_sp_velocity = vel_error.emult(_gain_vel_p) + _vel_int - _vel_dot.emult(_gain_vel_d);
 
 	// No control input from setpoints or corresponding states which are NAN
-	ControlMath::addIfNotNanVector3f(_acc_sp, acc_sp_velocity);
+    ControlMath::addIfNotNanVector3f(_acc_sp, acc_sp_velocity);
 
 	_accelerationControl();
 

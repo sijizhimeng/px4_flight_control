@@ -35,6 +35,7 @@
 #define LOCAL_POSITION_NED_HPP
 
 #include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/pos_helper.h>
 
 class MavlinkStreamLocalPositionNED : public MavlinkStream
 {
@@ -56,22 +57,34 @@ private:
 	explicit MavlinkStreamLocalPositionNED(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
 	uORB::Subscription _lpos_sub{ORB_ID(vehicle_local_position)};
+    //iusl
+    uORB::Subscription _lpos_helper_sub{ORB_ID(pos_helper)};
+    //int _lpos_helper_sub;
 
 	bool send() override
 	{
 		vehicle_local_position_s lpos;
+        pos_helper_s lpos_helper;
 
 		if (_lpos_sub.update(&lpos)) {
 			if (lpos.xy_valid && lpos.v_xy_valid) {
 				mavlink_local_position_ned_t msg{};
-
+                //_lpos_sub.copy(&lpos_helper);
+               // orb_copy(ORB_ID(pos_helper), _lpos_helper_sub, &lpos_helper);
+                _lpos_helper_sub.update(&lpos_helper);
 				msg.time_boot_ms = lpos.timestamp / 1000;
 				msg.x = lpos.x;
 				msg.y = lpos.y;
 				msg.z = lpos.z;
 				msg.vx = lpos.vx;
-				msg.vy = lpos.vy;
-				msg.vz = lpos.vz;
+                msg.vy = lpos.vy;
+                msg.vz = lpos.vz;
+                // msg.vx = lpos_helper.pos_x_d;
+                // msg.vy = lpos_helper.pos_y_d;
+                // msg.vz = lpos_helper.pos_z_d;;
+              //  msg.xd = lpos_helper.pos_x_d;
+              //  msg.yd = lpos_helper.pos_y_d;
+              //  msg.zd = lpos_helper.pos_z_d;
 
 				mavlink_msg_local_position_ned_send_struct(_mavlink->get_channel(), &msg);
 

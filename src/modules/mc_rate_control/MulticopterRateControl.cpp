@@ -94,6 +94,38 @@ MulticopterRateControl::parameters_updated()
 				  radians(_param_mc_acro_y_max.get()));
 
 	_actuators_0_circuit_breaker_enabled = circuit_breaker_enabled_by_val(_param_cbrk_rate_ctrl.get(), CBRK_RATE_CTRL_KEY);
+    //iusl
+        _tau_coe=tau_coe.get();
+        _thr_coe=thr_coe.get();
+
+        para.lambda_p_x=lambda_p_x.get();
+        para.lambda_p_y=lambda_p_y.get();
+        para.lambda_p_z=lambda_p_z.get();
+        para.lambda_q_x=lambda_omega_x.get();
+        para.lambda_q_y=lambda_omega_y.get();
+        para.lambda_q_z=lambda_omega_z.get();
+
+        para.iusl_kw_x=iusl_k_omega_x.get();
+        para.iusl_kw_y=iusl_k_omega_y.get();
+        para.iusl_kw_z=iusl_k_omega_z.get();
+        para.iusl_kv_x=iusl_kv_x.get();
+        para.iusl_kv_y=iusl_kv_y.get();
+        para.iusl_kv_z=iusl_kv_z.get();
+        para.iusl_kq=iusl_Kq.get();
+        para.iusl_wa1=iusl_eso_wa1.get();
+        para.iusl_wa2=iusl_eso_wa2.get();
+        para.iusl_wa3=iusl_eso_wa3.get();
+        para.iusl_pos_px=iusl_pos_px.get();
+        para.iusl_pos_py=iusl_pos_py.get();
+        para.iusl_pos_pz=iusl_pos_pz.get();
+        para.iusl_pos_ix=iusl_pos_ix.get();
+        para.iusl_pos_iy=iusl_pos_iy.get();
+        para.iusl_pos_iz=iusl_pos_iz.get();
+        para.iusl_pos_dx=iusl_pos_dx.get();
+        para.iusl_pos_dy=iusl_pos_dy.get();
+        para.iusl_pos_dz=iusl_pos_dz.get();
+        // _iusl_para_pub.publish(para);
+        //iusl
 }
 
 void
@@ -117,154 +149,160 @@ MulticopterRateControl::Run()
 		parameters_updated();
 	}
 
-	/* run controller on gyro changes */
-	vehicle_angular_velocity_s angular_velocity;
+    /* run controller on gyro changes */
+        vehicle_angular_velocity_s angular_velocity;
 
-	if (_vehicle_angular_velocity_sub.update(&angular_velocity)) {
+    if (_vehicle_angular_velocity_sub.update(&angular_velocity)) {
 
-		// grab corresponding vehicle_angular_acceleration immediately after vehicle_angular_velocity copy
-		vehicle_angular_acceleration_s v_angular_acceleration{};
-		_vehicle_angular_acceleration_sub.copy(&v_angular_acceleration);
+        // grab corresponding vehicle_angular_acceleration immediately after vehicle_angular_velocity copy
+        vehicle_angular_acceleration_s v_angular_acceleration{};
+        _vehicle_angular_acceleration_sub.copy(&v_angular_acceleration);
 
-		const hrt_abstime now = angular_velocity.timestamp_sample;
+        const hrt_abstime now = angular_velocity.timestamp_sample;
 
-		// Guard against too small (< 0.125ms) and too large (> 20ms) dt's.
-		const float dt = math::constrain(((now - _last_run) * 1e-6f), 0.000125f, 0.02f);
-		_last_run = now;
+        // Guard against too small (< 0.125ms) and too large (> 20ms) dt's.
+        const float dt = math::constrain(((now - _last_run) * 1e-6f), 0.000125f, 0.02f);
+        _last_run = now;
+        double   ff =dt;
+        PX4_WARN("MulticopterRateControl__dt  = %f",ff);
 
-		const Vector3f angular_accel{v_angular_acceleration.xyz};
-		const Vector3f rates{angular_velocity.xyz};
+        const Vector3f angular_accel{v_angular_acceleration.xyz};
+        const Vector3f rates{angular_velocity.xyz};
 
-		/* check for updates in other topics */
-		_v_control_mode_sub.update(&_v_control_mode);
+        /* check for updates in other topics */
+        _v_control_mode_sub.update(&_v_control_mode);
 
-		if (_vehicle_land_detected_sub.updated()) {
-			vehicle_land_detected_s vehicle_land_detected;
+        if (_vehicle_land_detected_sub.updated()) {
+            vehicle_land_detected_s vehicle_land_detected;
 
-			if (_vehicle_land_detected_sub.copy(&vehicle_land_detected)) {
-				_landed = vehicle_land_detected.landed;
-				_maybe_landed = vehicle_land_detected.maybe_landed;
-			}
-		}
+            if (_vehicle_land_detected_sub.copy(&vehicle_land_detected)) {
+                _landed = vehicle_land_detected.landed;
+                _maybe_landed = vehicle_land_detected.maybe_landed;
+            }
+        }
 
-		_vehicle_status_sub.update(&_vehicle_status);
 
-		if (_landing_gear_sub.updated()) {
-			landing_gear_s landing_gear;
+        _vehicle_status_sub.update(&_vehicle_status);
 
-			if (_landing_gear_sub.copy(&landing_gear)) {
-				if (landing_gear.landing_gear != landing_gear_s::GEAR_KEEP) {
-					_landing_gear = landing_gear.landing_gear;
-				}
-			}
-		}
+        if (_landing_gear_sub.updated()) {
+            landing_gear_s landing_gear;
 
-		if (_v_control_mode.flag_control_manual_enabled && !_v_control_mode.flag_control_attitude_enabled) {
-			// generate the rate setpoint from sticks
-			manual_control_setpoint_s manual_control_setpoint;
+            if (_landing_gear_sub.copy(&landing_gear)) {
+                if (landing_gear.landing_gear != landing_gear_s::GEAR_KEEP) {
+                    _landing_gear = landing_gear.landing_gear;
+                }
+            }
+        }
 
-			if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
-				// manual rates control - ACRO mode
-				const Vector3f man_rate_sp{
-					math::superexpo(manual_control_setpoint.y, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(-manual_control_setpoint.x, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(manual_control_setpoint.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
+        if (_v_control_mode.flag_control_manual_enabled && !_v_control_mode.flag_control_attitude_enabled) {
+            // generate the rate setpoint from sticks
+            manual_control_setpoint_s manual_control_setpoint;
 
-				_rates_sp = man_rate_sp.emult(_acro_rate_max);
-				_thrust_sp = math::constrain(manual_control_setpoint.z, 0.0f, 1.0f);
+            if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
+                // manual rates control - ACRO mode
+                const Vector3f man_rate_sp{
+                    math::superexpo(manual_control_setpoint.y, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+                    math::superexpo(-manual_control_setpoint.x, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+                    math::superexpo(manual_control_setpoint.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
 
-				// publish rate setpoint
-				vehicle_rates_setpoint_s v_rates_sp{};
-				v_rates_sp.roll = _rates_sp(0);
-				v_rates_sp.pitch = _rates_sp(1);
-				v_rates_sp.yaw = _rates_sp(2);
-				v_rates_sp.thrust_body[0] = 0.0f;
-				v_rates_sp.thrust_body[1] = 0.0f;
-				v_rates_sp.thrust_body[2] = -_thrust_sp;
-				v_rates_sp.timestamp = hrt_absolute_time();
+                _rates_sp = man_rate_sp.emult(_acro_rate_max);
+                _thrust_sp = math::constrain(manual_control_setpoint.z, 0.0f, 1.0f);
 
-				_v_rates_sp_pub.publish(v_rates_sp);
-			}
+                // publish rate setpoint
+                vehicle_rates_setpoint_s v_rates_sp{};
+                v_rates_sp.roll = _rates_sp(0);
+                v_rates_sp.pitch = _rates_sp(1);
+                v_rates_sp.yaw = _rates_sp(2);
+                v_rates_sp.thrust_body[0] = 0.0f;
+                v_rates_sp.thrust_body[1] = 0.0f;
+                v_rates_sp.thrust_body[2] = -_thrust_sp;
+                v_rates_sp.timestamp = hrt_absolute_time();
 
-		} else {
-			// use rates setpoint topic
-			vehicle_rates_setpoint_s v_rates_sp;
+                _v_rates_sp_pub.publish(v_rates_sp);
+            }
 
-			if (_v_rates_sp_sub.update(&v_rates_sp)) {
-				_rates_sp(0) = PX4_ISFINITE(v_rates_sp.roll)  ? v_rates_sp.roll  : rates(0);
-				_rates_sp(1) = PX4_ISFINITE(v_rates_sp.pitch) ? v_rates_sp.pitch : rates(1);
-				_rates_sp(2) = PX4_ISFINITE(v_rates_sp.yaw)   ? v_rates_sp.yaw   : rates(2);
-				_thrust_sp = -v_rates_sp.thrust_body[2];
-			}
-		}
+        } else {
+            // use rates setpoint topic
+            vehicle_rates_setpoint_s v_rates_sp;
 
-		// run the rate controller
-		if (_v_control_mode.flag_control_rates_enabled && !_actuators_0_circuit_breaker_enabled) {
+            if (_v_rates_sp_sub.update(&v_rates_sp)) {
+                _rates_sp(0) = PX4_ISFINITE(v_rates_sp.roll)  ? v_rates_sp.roll  : rates(0);
+                _rates_sp(1) = PX4_ISFINITE(v_rates_sp.pitch) ? v_rates_sp.pitch : rates(1);
+                _rates_sp(2) = PX4_ISFINITE(v_rates_sp.yaw)   ? v_rates_sp.yaw   : rates(2);
+                _thrust_sp = -v_rates_sp.thrust_body[2];
+            }
+        }
 
-			// reset integral if disarmed
-			if (!_v_control_mode.flag_armed || _vehicle_status.vehicle_type != vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
-				_rate_control.resetIntegral();
-			}
+        // run the rate controller
+        if (_v_control_mode.flag_control_rates_enabled && !_actuators_0_circuit_breaker_enabled) {
 
-			// update saturation status from mixer feedback
-			if (_motor_limits_sub.updated()) {
-				multirotor_motor_limits_s motor_limits;
+            // reset integral if disarmed
+            if (!_v_control_mode.flag_armed || _vehicle_status.vehicle_type != vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+                _rate_control.resetIntegral();
+            }
 
-				if (_motor_limits_sub.copy(&motor_limits)) {
-					MultirotorMixer::saturation_status saturation_status;
-					saturation_status.value = motor_limits.saturation_status;
+            // update saturation status from mixer feedback
+            if (_motor_limits_sub.updated()) {
+                multirotor_motor_limits_s motor_limits;
 
-					_rate_control.setSaturationStatus(saturation_status);
-				}
-			}
+                if (_motor_limits_sub.copy(&motor_limits)) {
+                    MultirotorMixer::saturation_status saturation_status;
+                    saturation_status.value = motor_limits.saturation_status;
 
-			// run rate controller
-			const Vector3f att_control = _rate_control.update(rates, _rates_sp, angular_accel, dt, _maybe_landed || _landed);
+                    _rate_control.setSaturationStatus(saturation_status);
+                }
+            }
 
-			// publish rate controller status
-			rate_ctrl_status_s rate_ctrl_status{};
-			_rate_control.getRateControlStatus(rate_ctrl_status);
-			rate_ctrl_status.timestamp = hrt_absolute_time();
-			_controller_status_pub.publish(rate_ctrl_status);
+            // run rate controller
+            const Vector3f att_control = _rate_control.update(rates, _rates_sp, angular_accel, dt, _maybe_landed || _landed);
 
-			// publish actuator controls
-			actuator_controls_s actuators{};
-			actuators.control[actuator_controls_s::INDEX_ROLL] = PX4_ISFINITE(att_control(0)) ? att_control(0) : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_PITCH] = PX4_ISFINITE(att_control(1)) ? att_control(1) : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_YAW] = PX4_ISFINITE(att_control(2)) ? att_control(2) : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_THROTTLE] = PX4_ISFINITE(_thrust_sp) ? _thrust_sp : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_LANDING_GEAR] = _landing_gear;
-			actuators.timestamp_sample = angular_velocity.timestamp_sample;
+//            // publish rate controller status
+//            rate_ctrl_status_s rate_ctrl_status{};
+//            _rate_control.getRateControlStatus(rate_ctrl_status);
+//            rate_ctrl_status.timestamp = hrt_absolute_time();
+//            _controller_status_pub.publish(rate_ctrl_status);
 
-			// scale effort by battery status if enabled
-			if (_param_mc_bat_scale_en.get()) {
-				if (_battery_status_sub.updated()) {
-					battery_status_s battery_status;
+            // publish actuator controls
+            actuator_controls_s actuators{};
+           actuators.control[actuator_controls_s::INDEX_ROLL] = PX4_ISFINITE(att_control(0)) ? att_control(0) : 0.0f;
+           actuators.control[actuator_controls_s::INDEX_PITCH] = PX4_ISFINITE(att_control(1)) ? att_control(1) : 0.0f;
+           actuators.control[actuator_controls_s::INDEX_YAW] = PX4_ISFINITE(att_control(2)) ? att_control(2) : 0.0f;
+           actuators.control[actuator_controls_s::INDEX_THROTTLE] = PX4_ISFINITE(_thrust_sp) ? _thrust_sp : 0.0f;
+            actuators.control[actuator_controls_s::INDEX_LANDING_GEAR] = _landing_gear;
+            actuators.timestamp_sample = angular_velocity.timestamp_sample;
 
-					if (_battery_status_sub.copy(&battery_status) && battery_status.connected && battery_status.scale > 0.f) {
-						_battery_status_scale = battery_status.scale;
-					}
-				}
 
-				if (_battery_status_scale > 0.0f) {
-					for (int i = 0; i < 4; i++) {
-						actuators.control[i] *= _battery_status_scale;
-					}
-				}
-			}
+            // scale effort by battery status if enabled
+            if (_param_mc_bat_scale_en.get()) {
+                if (_battery_status_sub.updated()) {
+                    battery_status_s battery_status;
 
-			actuators.timestamp = hrt_absolute_time();
-			_actuators_0_pub.publish(actuators);
+                    if (_battery_status_sub.copy(&battery_status) && battery_status.connected && battery_status.scale > 0.f) {
+                        _battery_status_scale = battery_status.scale;
+                    }
+                }
 
-		} else if (_v_control_mode.flag_control_termination_enabled) {
-			if (!_vehicle_status.is_vtol) {
-				// publish actuator controls
-				actuator_controls_s actuators{};
-				actuators.timestamp = hrt_absolute_time();
-				_actuators_0_pub.publish(actuators);
-			}
-		}
-	}
+                if (_battery_status_scale > 0.0f) {
+                    for (int i = 0; i < 4; i++) {
+                        actuators.control[i] *= _battery_status_scale;
+                    }
+                }
+            }
+
+            actuators.timestamp = hrt_absolute_time();
+
+            _actuators_0_pub.publish(actuators);
+
+
+        } /*else if (_v_control_mode.flag_control_termination_enabled) {
+            if (!_vehicle_status.is_vtol) {
+                // publish actuator controls
+                actuator_controls_s actuators{};
+                actuators.timestamp = hrt_absolute_time();
+                _actuators_0_pub.publish(actuators);
+            }
+        }*/
+    }
 
 	perf_end(_loop_perf);
 }
@@ -331,5 +369,5 @@ The controller has a PID loop for angular rate error.
 
 extern "C" __EXPORT int mc_rate_control_main(int argc, char *argv[])
 {
-	return MulticopterRateControl::main(argc, argv);
+        return 1;//MulticopterRateControl::main(argc, argv);
 }

@@ -92,7 +92,7 @@ public:
 	float getAccelNoiseVar() const { return _acc_var; }
 
 private:
-	float _hover_thr{0.5f};
+	float _hover_thr{0.6f};
 
 	float _gate_size{3.f};
 	float _state_var{0.01f}; ///< Initial hover thrust uncertainty variance (thrust^2)

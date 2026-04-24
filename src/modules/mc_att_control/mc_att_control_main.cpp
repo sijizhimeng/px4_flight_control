@@ -404,5 +404,5 @@ https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/154099/eth
 
 int mc_att_control_main(int argc, char *argv[])
 {
-	return MulticopterAttitudeControl::main(argc, argv);
+        return 1;//MulticopterAttitudeControl::main(argc, argv);
 }

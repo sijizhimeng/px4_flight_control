@@ -404,7 +404,7 @@ void MulticopterPositionControl::Run()
 				math::min(speed_up, _param_mpc_z_vel_max_up.get()), // takeoff ramp starts with negative velocity limit
 				math::constrain(speed_down, 0.f, _param_mpc_z_vel_max_dn.get()));
 
-			_control.setInputSetpoint(_setpoint);
+                        _control.setInputSetpoint(_setpoint);
 
 			// update states
 			if (!PX4_ISFINITE(_setpoint.z)
@@ -420,7 +420,6 @@ void MulticopterPositionControl::Run()
 			}
 
 			_control.setState(states);
-
 			// Run position control
 			if (_control.update(dt)) {
 				_failsafe_land_hysteresis.set_state_and_update(false, time_stamp_now);
@@ -457,7 +456,6 @@ void MulticopterPositionControl::Run()
 			_control.getAttitudeSetpoint(attitude_setpoint);
 			attitude_setpoint.timestamp = hrt_absolute_time();
 			_vehicle_attitude_setpoint_pub.publish(attitude_setpoint);
-
 		} else {
 			// an update is necessary here because otherwise the takeoff state doesn't get skiped with non-altitude-controlled modes
 			_takeoff.updateTakeoffState(_vehicle_control_mode.flag_armed, _vehicle_land_detected.landed, false, 10.f, true,
@@ -610,5 +608,5 @@ logging.
 
 extern "C" __EXPORT int mc_pos_control_main(int argc, char *argv[])
 {
-	return MulticopterPositionControl::main(argc, argv);
+        return 1;//MulticopterPositionControl::main(argc,argv);
 }
