@@ -47,6 +47,8 @@ GTAGS
 *.creator.user
 *.files
 *.includes
+*.px4log
+*.ulg
 
 # CLion ignores
 .idea
